@@ -83,25 +83,23 @@ public:
         // - Then the EventStream Controller is activated and one stream is added.
         //   It's basically a List of streams used to parallelize Memory transfers and calculations.
         // - Initialize TransactionManager
-        PMacc::Environment<DIM2>::get().initDevices(
-            devices,
-            periodic);
+        PMacc::Environment<DIM2>::get().initDevices(devices,
+						    periodic);
+	std::cout << "Init devices ✓" << std::endl; 
 
         // Now we have allocated every node to a grid position in the GC.
         // We use that grid position to allocate every node to a position in the physic grid.
         // Using the localGridSize = the number of cells per node = number of cells / nodes,
         // we can get the position of the current node as an offset in numbers of cells
-        PMacc::GridController<DIM2> & gc(
-            PMacc::Environment<DIM2>::get().GridController());
-        PMacc::DataSpace<DIM2> localGridSize(
-            gridSize / devices);
+        PMacc::GridController<DIM2> & gc(PMacc::Environment<DIM2>::get().GridController());
+        PMacc::DataSpace<DIM2> localGridSize(gridSize / devices);
 
         // - This forwards arguments to SubGrid.init()
         // - Create Singletons: EnvironmentController, DataConnector, PluginConnector, nvidia::memory::MemoryInfo
-        PMacc::Environment<DIM2>::get().initGrids(
-            gridSize,
-            localGridSize,
-            gc.getPosition() * localGridSize);
+        PMacc::Environment<DIM2>::get().initGrids(gridSize,
+						  localGridSize,
+						  gc.getPosition() * localGridSize);
+	std::cout << "Init grids ✓" << std::endl; 
     }
 
     virtual ~Simulation()
@@ -176,27 +174,29 @@ public:
          * white points. World will be written to buffer in first argument    */
         evo.initEvolution(buff1->getDeviceBuffer().getDataBox(), 0.1f);
 
+	std::cout << "Init simulation ✓" << std::endl;
+
     }
 
     void start()
     {
+	
         ALPAKA_DEBUG_MINIMAL_LOG_SCOPE;
+	std::cout << "Entry start simulation ✓" << std::endl;	
 
-        if(isMaster)
-        {
-            buff1->deviceToHost();
+	buff1->deviceToHost();
+	    
+	// Write out the initial picture into a file.
+	std::string sFileNameWithoutExt(
+					"gol_" + std::to_string(gridSize.x())
+					+ "x" + std::to_string(gridSize.y())
+					+ "_" + alpaka::acc::getAccName<PMacc::AlpakaAcc<alpaka::dim::DimInt<2u>>>()
+					+ "_init");
+	std::replace(sFileNameWithoutExt.begin(), sFileNameWithoutExt.end(), '<', '_');
+	std::replace(sFileNameWithoutExt.begin(), sFileNameWithoutExt.end(), '>', '_');
+	writeFullImage(*buff1.get(), sFileNameWithoutExt);
 
-            // Write out the initial picture into a file.
-            std::string sFileNameWithoutExt(
-                "gol_" + std::to_string(gridSize.x())
-                + "x" + std::to_string(gridSize.y())
-                + "_" + alpaka::acc::getAccName<PMacc::AlpakaAcc<alpaka::dim::DimInt<2u>>>()
-                + "_init");
-            std::replace(sFileNameWithoutExt.begin(), sFileNameWithoutExt.end(), '<', '_');
-            std::replace(sFileNameWithoutExt.begin(), sFileNameWithoutExt.end(), '>', '_');
-            writeFullImage(*buff1.get(), sFileNameWithoutExt);
-        }
-
+	std::cout << "Start simulation ✓" << std::endl;
         for(std::size_t i(0); i < steps; ++i)
         {
             oneStep(i, *buff1.get(), *buff2.get());
@@ -224,7 +224,7 @@ private:
         // transfer for the case the core calculation is finished earlier,
         // GridBuffer.asyncComm returns a transaction handle we can check
         auto send(read.asyncCommunication(splitEvent));
-
+	
         evo.run<PMacc::CORE>(
             read.getDeviceBuffer().getDataBox(),
             write.getDeviceBuffer().getDataBox());
@@ -240,29 +240,16 @@ private:
         // Copy from device to host for saving. All threads and not only the master have to do this.
         write.deviceToHost();
 
-        if(isMaster)
-        {
-            // Write out the picture into a file.
-            std::string sFileNameWithoutExt1(
-                "gol_" + std::to_string(write.getHostBuffer().getDataSpace().x())
-                + "x" + std::to_string(write.getHostBuffer().getDataSpace().y())
-                + "_" + alpaka::acc::getAccName<PMacc::AlpakaAcc<alpaka::dim::DimInt<2u>>>()
-                + "_" + std::to_string(currentStep));
-            GrayImgWriter imgWriter;
-            std::replace(sFileNameWithoutExt1.begin(), sFileNameWithoutExt1.end(), '<', '_');
-            std::replace(sFileNameWithoutExt1.begin(), sFileNameWithoutExt1.end(), '>', '_');
-            imgWriter(write.getHostBuffer().getDataBox(), write.getHostBuffer().getDataSpace(), sFileNameWithoutExt1);
-
-            // Write out the picture into a file.
-            std::string sFileNameWithoutExt(
-                "gol_" + std::to_string(gridSize.x())
-                + "x" + std::to_string(gridSize.y())
-                + "_" + alpaka::acc::getAccName<PMacc::AlpakaAcc<alpaka::dim::DimInt<2u>>>()
-                + "_" + std::to_string(currentStep));
-            std::replace(sFileNameWithoutExt.begin(), sFileNameWithoutExt.end(), '<', '_');
-            std::replace(sFileNameWithoutExt.begin(), sFileNameWithoutExt.end(), '>', '_');
-            writeFullImage(write, sFileNameWithoutExt);
-        }
+	// Write out the picture into a file.
+	std::string sFileNameWithoutExt("gol_" + std::to_string(gridSize.x())
+					+ "x" + std::to_string(gridSize.y())
+					+ "_" + alpaka::acc::getAccName<PMacc::AlpakaAcc<alpaka::dim::DimInt<2u>>>()
+					+ "_" + std::to_string(currentStep));
+	
+	std::replace(sFileNameWithoutExt.begin(), sFileNameWithoutExt.end(), '<', '_');
+	std::replace(sFileNameWithoutExt.begin(), sFileNameWithoutExt.end(), '>', '_');
+	writeFullImage(write, sFileNameWithoutExt);
+	
     }
         
     //-----------------------------------------------------------------------------
@@ -275,8 +262,10 @@ private:
         // gather::operator() gathers all the buffers and assembles those to a complete picture discarding the guards.
         auto picture(gather(localGridBuffer.getHostBuffer().getDataBox()));
 
-        GrayImgWriter imgWriter;
-        imgWriter(picture, gridSize, sFileNameWithoutExt);
+	if(isMaster){
+	    GrayImgWriter imgWriter;
+	    imgWriter(picture, gridSize, sFileNameWithoutExt);
+	}
     }
 
 private:
