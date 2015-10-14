@@ -33,8 +33,8 @@ namespace PMacc
 
 inline StreamTask::StreamTask( ) :
 ITask( ),
-stream( NULL ),
-cudaEvent( ),
+stream( nullptr ),
+cudaEvent( nullptr ),
 alwaysFinished( false )
 {
     this->setTaskType( TASK_CUDA );

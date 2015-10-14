@@ -41,8 +41,8 @@ public:
      * no data is allocated @see create()
      */
     CudaEvent() :
-        m_event(),
-        m_pStream(),
+        m_event(nullptr),
+        m_pStream(nullptr),
         isRecorded(false)
     {}
 

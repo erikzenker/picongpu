@@ -190,7 +190,8 @@ inline Manager::Manager( )
      * already created before calling this
      */
     eventPool.reset(new EventPool( ));
-    eventPool->addEvents( 300 );
+    //eventPool->addEvents( 300 );
+    eventPool->addEvents( 10 );
 }
 
 inline Manager::Manager( const Manager& )

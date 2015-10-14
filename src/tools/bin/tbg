@@ -351,6 +351,7 @@ tooltpl_file_data_cleaned=`echo "$tooltpl_file_data" |  grep -v "^[[:alpha:]][[:
 batch_file=`tooltpl_replace tooltpl_file_data_cleaned solved_variables`
 
 echo "$batch_file" > tbg/submit.start
+chmod +x tbg/submit.start
 echo -e "\n#this script was created with call $initCall" >> tbg/submit.start
 echo "$tooltpl_file_data" > tbg/submit.tpl
 cp -a "$TBG_cfgFile" tbg/submit.cfg

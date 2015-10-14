@@ -53,7 +53,8 @@ private:
 #if ALPAKA_ACC_GPU_CUDA_ENABLE
     using MappingDesc = PMacc::MappingDescription<DIM2, PMacc::math::CT::Int<16, 16>>;
 #else
-    using MappingDesc = PMacc::MappingDescription<DIM2, PMacc::math::CT::Int<1, 1>>;
+    //using MappingDesc = PMacc::MappingDescription<DIM2, PMacc::math::CT::Int<1, 1>>;
+    using MappingDesc = PMacc::MappingDescription<DIM2, PMacc::math::CT::Int<32, 32>>;    
 #endif
 
 public:

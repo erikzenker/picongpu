@@ -97,14 +97,25 @@ using namespace picongpu;
  */
 int main(int argc, char **argv)
 {
+    std::cout << "Entry main ✓" << std::endl;
+    
     int prov;
     MPI_CHECK(MPI_Init_thread(&argc, &argv,MPI_THREAD_FUNNELED,&prov));
     std::cout<<"openmpi "<<prov<<"=="<<MPI_THREAD_FUNNELED<<std::endl;
 
-
+    std::cout << "Main Checkpoint 0 ✓" << std::endl;
+    
     picongpu::simulation_starter::SimStarter sim;
+
+    std::cout << "Main Checkpoint 1 ✓" << std::endl;
+    
     ArgsParser::ArgsErrorCode parserCode = sim.parseConfigs(argc, argv);
+
+    std::cout << "Main Checkpoint 2 ✓" << std::endl;
+    
     int errorCode = 1;
+
+
 
     switch(parserCode)
     {

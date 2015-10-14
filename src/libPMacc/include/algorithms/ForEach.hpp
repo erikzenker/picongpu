@@ -183,6 +183,8 @@ struct ForEach
     HDINLINE void
     operator()( const T_Types & ... ts) const
     {
+	std::cout << "ForEach Checkpoint" << std::endl;
+	
         Functor()(getForwardedValue(ts) ...);
         NextCall()(ts ...);
     }
@@ -192,8 +194,12 @@ struct ForEach
     HDINLINE void
     operator()( const T_Types & ... ts)
     {
+
+	std::cout << "ForEach Checkpoint 0" << std::endl;
         Functor()(getForwardedValue(ts) ...);
+	std::cout << "ForEach Checkpoint 1" << std::endl;	
         NextCall()(ts ...);
+	std::cout << "ForEach Checkpoint 2" << std::endl;	
     }
 };
 

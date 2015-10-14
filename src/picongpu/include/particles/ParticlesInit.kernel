@@ -21,6 +21,8 @@
 
 #pragma once
 
+#include <typeinfo> /* typeid */
+
 #include "simulation_defines.hpp"
 #include "particles/Particles.hpp"
 #include "memory/boxes/DataBox.hpp"
@@ -81,6 +83,7 @@ ALPAKA_FN_ACC void operator()(
     ParBox const & pb,
     Mapping const & mapper) const
 {
+
     typedef typename ParBox::FrameType FRAME;
     typedef typename Mapping::SuperCellSize SuperCellSize;
 
@@ -112,9 +115,12 @@ ALPAKA_FN_ACC void operator()(
 
     const float_X realParticlesPerCell = realDensity * CELL_VOLUME;
 
-    auto finished(alpaka::block::shared::allocVar<int>(acc));
+    auto& finished(alpaka::block::shared::allocVar<int>(acc));
+
     if (linearThreadIdx == 0)
-        finished = 1;
+	finished = 1;
+	alpaka::atomic::atomicOp<alpaka::atomic::op::Exch>(acc, &finished, 1);
+
     alpaka::block::sync::syncBlockThreads(acc);
 
     positionFunctor.init(acc, totalGpuCellIdx);
@@ -130,26 +136,29 @@ ALPAKA_FN_ACC void operator()(
         alpaka::atomic::atomicOp<alpaka::atomic::op::Exch>(acc, &finished, 0); //one or more cell has particles to create
 
     alpaka::block::sync::syncBlockThreads(acc);
-    if (finished == 1)
-        return; // if there is no particle which has to be created
+    if (finished == 1){
+	return; // if there is no particle which has to be created
+    }
 
     if (linearThreadIdx == 0)
-    {
-        frame = &(pb.getEmptyFrame());
-        pb.setAsLastFrame(acc, *frame, superCellIdx);
-    }
+	{
+	    frame = &(pb.getEmptyFrame());
+	    pb.setAsLastFrame(acc, *frame, superCellIdx);
+	}
 
     alpaka::block::sync::syncBlockThreads(acc);
 
     // distribute the particles within the cell
+
     do
     {
-
         alpaka::block::sync::syncBlockThreads(acc);
-        if (linearThreadIdx == 0)
-            finished = 1; //clear flag
+	if (linearThreadIdx == 0)
+	    finished = 1; //clear flag
         alpaka::block::sync::syncBlockThreads(acc);
+	
 
+	
         floatD_X pos = positionFunctor(totalNumParsPerCell - numParsPerCell);
 
         if (numParsPerCell > 0)
@@ -193,6 +202,8 @@ ALPAKA_FN_ACC void operator()(
         }
     }
     while (finished == 0);
+
+    printf("Exit KernelFillGridWithParticles\n");
 }
 };
 

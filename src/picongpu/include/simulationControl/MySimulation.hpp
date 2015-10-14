@@ -59,7 +59,7 @@
 #include "compileTime/conversion/SeqToMap.hpp"
 #include "compileTime/conversion/TypeToPointerPair.hpp"
 
-#include "algorithms/ForEach.hpp"
+#include "algorithms/ForEach.hpp" /* ForEach */
 #include "particles/ParticlesFunctors.hpp"
 #include "particles/InitFunctors.hpp"
 #include <boost/mpl/int.hpp>
@@ -266,6 +266,9 @@ public:
 
     virtual uint32_t init()
     {
+	std::cout << "Entry init simulation ✓" << std::endl;
+
+	
         namespace nvmem = PMacc::nvidia::memory;
         // create simulation data such as fields and particles
         fieldB = new FieldB(*cellDescription);
@@ -277,12 +280,17 @@ public:
 
         laser = new LaserPhysics(cellDescription->getGridLayout());
 
+
+	std::cout << "Init simulation Checkpoint 0 ✓" << std::endl;
+	
         ForEach<VectorAllSpecies, particles::CreateSpecies<bmpl::_1>, MakeIdentifier<bmpl::_1> > createSpeciesMemory;
         createSpeciesMemory(forward(particleStorage), cellDescription);
 
         size_t freeGpuMem(0);
         Environment<>::get().EnvMemoryInfo().setReservedMemory(totalFreeGpuMemory);
         Environment<>::get().EnvMemoryInfo().getMemoryInfo(&freeGpuMem);
+
+	std::cout << "Init simulation Checkpoint 1 ✓" << std::endl;
       
         if( Environment<>::get().EnvMemoryInfo().isSharedMemoryPool() )
         {
@@ -292,12 +300,19 @@ public:
         else
             log<picLog::MEMORY > ("RAM is NOT shared between GPU and host.");
 
+	std::cout << "Init simulation Checkpoint 2 ✓" << std::endl;
+
         // initializing the heap for particles
         mallocMC::initHeap(freeGpuMem);
+
+	std::cout << "Init simulation Checkpoint 3 ✓" << std::endl;
+	
         this->mallocMCBuffer = new MallocMCBuffer();
 
         ForEach<VectorAllSpecies, particles::CallCreateParticleBuffer<bmpl::_1>, MakeIdentifier<bmpl::_1> > createParticleBuffer;
         createParticleBuffer(forward(particleStorage));
+
+	std::cout << "Init simulation Checkpoint 4 ✓" << std::endl;
 
         Environment<>::get().EnvMemoryInfo().getMemoryInfo(&freeGpuMem);
         log<picLog::MEMORY > ("free mem after all mem is allocated %1% MiB") % (freeGpuMem / 1024 / 1024);
@@ -307,19 +322,30 @@ public:
         fieldJ->init(*fieldE, *fieldB);
         fieldTmp->init();
 
+	std::cout << "Init simulation Checkpoint 5 ✓" << std::endl;
+
         // create field solver
         this->myFieldSolver = new fieldSolver::FieldSolver(*cellDescription);
 
         // create current interpolation
         this->myCurrentInterpolation = new fieldSolver::CurrentInterpolation;
 
+	std::cout << "Init simulation Checkpoint 6 ✓" << std::endl;
+
 
         ForEach<VectorAllSpecies, particles::CallInit<bmpl::_1>, MakeIdentifier<bmpl::_1> > particleInit;
+
+	std::cout << "Init simulation Checkpoint 7 ✓" << std::endl;	
+	
         particleInit(forward(particleStorage), fieldE, fieldB, fieldJ, fieldTmp);
+
+	std::cout << "Init simulation Checkpoint 8 ✓" << std::endl;	
 
 
         /* add CUDA streams to the StreamController for concurrent execution */
         Environment<>::get().StreamController().addStreams(6);
+
+	std::cout << "Init simulation Checkpoint 9 ✓" << std::endl;	
 
         uint32_t step = 0;
 
@@ -328,6 +354,8 @@ public:
             initialiserController->printInformation();
             if (this->restartRequested)
             {
+
+		std::cout << "Init simulation Checkpoint 9 if ✓" << std::endl;	
                 /* we do not require --restart-step if a master checkpoint file is found */
                 if (this->restartStep < 0)
                 {
@@ -345,11 +373,17 @@ public:
             }
             else
             {
+		std::cout << "Init simulation Checkpoint 9 else 0 ✓" << std::endl;	
                 initialiserController->init();
+		std::cout << "Init simulation Checkpoint 9 else 1 ✓" << std::endl;			
                 ForEach<particles::InitPipeline, particles::CallFunctor<bmpl::_1> > initSpecies;
+		std::cout << "Init simulation Checkpoint 9 else 2 ✓" << std::endl;
                 initSpecies(forward(particleStorage), step);
+		std::cout << "Init simulation Checkpoint 9 else 3 ✓" << std::endl;					
             }
         }
+
+	std::cout << "Init simulation Checkpoint 10 ✓" << std::endl;	
 
         Environment<>::get().EnvMemoryInfo().getMemoryInfo(&freeGpuMem);
         log<picLog::MEMORY > ("free mem after all particles are initialized %1% MiB") % (freeGpuMem / 1024 / 1024);
@@ -373,6 +407,8 @@ public:
         EventTask eRfieldB = fieldB->asyncCommunication(__getTransactionEvent());
         __setTransactionEvent(eRfieldB);
 
+	std::cout << "Finished init simulation ✓" << std::endl;
+	
         return step;
     }
 
@@ -388,6 +424,8 @@ public:
      */
     virtual void runOneStep(uint32_t currentStep)
     {
+	std::cout << "Entry run one simulation step ✓" << std::endl;
+	
         namespace nvfct = PMacc::nvidia::functors;
 
         /* Initialize ionization routine for each species

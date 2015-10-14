@@ -48,7 +48,7 @@ namespace PMacc
         /**
          * constructor
          */
-        ITask(): myType(ITask::TASK_UNKNOWN)
+        ITask(): myType(ITask::TASK_UNKNOWN), myId(0)
         {
             // task id 0 is reserved for invalid
             static id_t globalId = 1;
